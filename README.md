@@ -1,3 +1,9 @@
+### Kelompok 8 Machine Learning Operations RA
+1. Esteria Rohanauli Sidauruk (122450025)
+2. Fadhil Fitra Wijaya (122450082)
+3. Baruna Abirawa (122450097)
+4. Rendra Eka Prayoga (122450112)
+5. Bastian Heskia Silaban (122450130)
 
 # 🏠 Prediksi Harga Rumah (End-to-End MLOps)
 
@@ -123,3 +129,4 @@ ML_Project_Rumah/
 
 ```
 ```
+
