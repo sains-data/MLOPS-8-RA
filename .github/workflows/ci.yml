@@ -20,7 +20,7 @@ jobs:
       run: docker compose config
 
     - name: Build API Image
-      run: docker build -t house-price-api ./api
+      run: docker build -t house-price-api -f api/Dockerfile .
 
     - name: Build Frontend Image
       run: docker build -t house-price-frontend ./frontend
