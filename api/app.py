@@ -21,14 +21,16 @@ app = Flask(__name__)
 MAX_LOG_SIZE = 100
 prediction_logs = deque(maxlen=MAX_LOG_SIZE)
 
-def log_prediction(input_data, prediction, status="success", error_msg=None):
+def log_prediction(input_data, prediction, status="success", error_msg=None, model_used="Unknown", details=None):
     """Log each prediction request"""
     log_entry = {
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "input": input_data,
         "prediction": prediction,
         "status": status,
-        "error": error_msg
+        "error": error_msg,
+        "model_used": model_used,
+        "details": details
     }
     prediction_logs.append(log_entry)
     return log_entry
@@ -43,64 +45,80 @@ reference_stats = None
 def load_reference_stats():
     """Load training data for drift detection with Evidently"""
     global reference_data, reference_stats
+    
+    # helper for stats
+    def calc_stats(df):
+        return {
+            "mean": df.mean().to_dict(),
+            "std": df.std().to_dict(),
+            "min": df.min().to_dict(),
+            "max": df.max().to_dict(),
+            "count": len(df)
+        }
+
     try:
         base_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dirs = [
+            os.path.join(base_dir, "..", "data"), # Local
+            os.path.join(base_dir, "data")        # Docker
+        ]
         
-        # Try to load from processed data
-        x_train_path = os.path.join(base_dir, "..", "data", "processed", "x_train.pkl")
-        if os.path.exists(x_train_path):
-            reference_data = pd.read_pickle(x_train_path)
-            reference_stats = {
-                "mean": reference_data.mean().to_dict(),
-                "std": reference_data.std().to_dict(),
-                "min": reference_data.min().to_dict(),
-                "max": reference_data.max().to_dict(),
-                "count": len(reference_data)
-            }
-        else:
-            # Try to load from raw data
-            raw_data_path = os.path.join(base_dir, "..", "data", "raw", "DATA RUMAH.xlsx")
-            if os.path.exists(raw_data_path):
-                df = pd.read_excel(raw_data_path)
-                features = ["LB", "LT", "KT", "KM", "GRS"]
-                reference_data = df[features].dropna()
-                reference_stats = {
-                    "mean": reference_data.mean().to_dict(),
-                    "std": reference_data.std().to_dict(),
-                    "min": reference_data.min().to_dict(),
-                    "max": reference_data.max().to_dict(),
-                    "count": len(reference_data)
-                }
-            else:
-                # Fallback: create synthetic reference data based on typical house values
-                np.random.seed(42)
-                n_samples = 100
-                reference_data = pd.DataFrame({
-                    "LB": np.random.normal(150, 80, n_samples).clip(30, 500),
-                    "LT": np.random.normal(180, 100, n_samples).clip(50, 600),
-                    "KT": np.random.normal(4, 1.5, n_samples).clip(1, 10).astype(int),
-                    "KM": np.random.normal(3, 1.2, n_samples).clip(1, 8).astype(int),
-                    "GRS": np.random.normal(2, 1, n_samples).clip(0, 5).astype(int)
-                })
-                reference_stats = {
-                    "mean": reference_data.mean().to_dict(),
-                    "std": reference_data.std().to_dict(),
-                    "min": reference_data.min().to_dict(),
-                    "max": reference_data.max().to_dict(),
-                    "count": len(reference_data)
-                }
-                
-        print(f"Reference data loaded: {len(reference_data)} samples")
+        # 1. Try Pickle
+        try:
+            for d in data_dirs:
+                p = os.path.join(d, "processed", "x_train.pkl")
+                if os.path.exists(p):
+                    print(f"Loading reference from {p}")
+                    reference_data = pd.read_pickle(p)
+                    reference_stats = calc_stats(reference_data)
+                    print(f"Loaded {len(reference_data)} rows from pickle.")
+                    return
+        except Exception as e:
+            print(f"Failed to load pickle: {e}")
+
+        # 2. Try Excel
+        try:
+            for d in data_dirs:
+                p = os.path.join(d, "raw", "DATA RUMAH.xlsx")
+                if os.path.exists(p):
+                    print(f"Loading reference from {p}")
+                    df = pd.read_excel(p)
+                    features = ["LB", "LT", "KT", "KM", "GRS"]
+                    reference_data = df[features].dropna()
+                    reference_stats = calc_stats(reference_data)
+                    print(f"Loaded {len(reference_data)} rows from Excel.")
+                    return
+        except Exception as e:
+            print(f"Failed to load Excel: {e}")
+
+        # 3. Fallback: Synthetic
+        print("Using synthetic reference data.")
+        np.random.seed(42)
+        n_samples = 100
+        reference_data = pd.DataFrame({
+            "LB": np.random.normal(150, 80, n_samples).clip(30, 500),
+            "LT": np.random.normal(180, 100, n_samples).clip(50, 600),
+            "KT": np.random.normal(4, 1.5, n_samples).clip(1, 10).astype(int),
+            "KM": np.random.normal(3, 1.2, n_samples).clip(1, 8).astype(int),
+            "GRS": np.random.normal(2, 1, n_samples).clip(0, 5).astype(int)
+        })
+        reference_stats = calc_stats(reference_data)
+
     except Exception as e:
-        print(f"Error loading reference data: {e}")
-        reference_data = None
-        reference_stats = None
+        print(f"Critical error in load_reference_stats: {e}")
+        # Final safety net
+        reference_data = pd.DataFrame(columns=["LB", "LT", "KT", "KM", "GRS"])
+        reference_stats = calc_stats(reference_data)
 
 def calculate_drift_evidently(recent_predictions):
     """Calculate data drift using Evidently library"""
     global reference_data
     
-    if reference_data is None or len(recent_predictions) < 5:
+    # Check if reference data is available and not empty
+    if reference_data is None or len(reference_data) == 0:
+        return None
+        
+    if len(recent_predictions) < 5:
         return None
     
     # Extract input features from recent predictions
@@ -324,11 +342,52 @@ def calculate_drift_simple(recent_inputs, features):
         "method": "fallback"
     }
 
-# Load config and model
+# Load config
 config_path = utils.get_config_path()
 config = utils.load_params(config_path)
-model_path = utils.get_model_path(config)
-model = utils.pickle_load(model_path)
+
+# Load Models (Model 1: Linear Regression, Model 2: Random Forest)
+model1 = None
+model2 = None
+model1_metadata = {}
+model2_metadata = {}
+
+try:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    model1_path = os.path.join(base_dir, "models", "model_1.pkl")
+    model2_path = os.path.join(base_dir, "models", "model_2.pkl")
+    
+    if os.path.exists(model1_path):
+        model1 = utils.pickle_load(model1_path)
+        print("Model 1 (Linear Regression) loaded.")
+    
+    if os.path.exists(model2_path):
+        model2 = utils.pickle_load(model2_path)
+        print("Model 2 (Random Forest) loaded.")
+        
+    # Also load the old production_model if model 1 is missing, for backward compatibility
+    if model1 is None:
+        prod_path = os.path.join(base_dir, "models", "production_model.pkl")
+        if os.path.exists(prod_path):
+             model1 = utils.pickle_load(prod_path)
+             print("Legacy Production Model loaded as Model 1.")
+
+    # Load Metrics to determine accuracy
+    metrics_path = os.path.join(base_dir, "models", "metrics.json")
+    if os.path.exists(metrics_path):
+        with open(metrics_path, 'r') as f:
+            metrics_data = json.load(f)
+            # Parse structure: could be old (flat) or new (nested)
+            if "model1" in metrics_data:
+                model1_metadata = metrics_data["model1"]
+                model2_metadata = metrics_data.get("model2", {})
+            else:
+                # Old format
+                model1_metadata = {"r2": metrics_data.get("r2", 0), "mape": metrics_data.get("mape", 0)}
+                model2_metadata = {}
+    
+except Exception as e:
+    print(f"Error loading models: {e}")
 
 # Load reference stats for drift detection
 load_reference_stats()
@@ -339,7 +398,7 @@ import preprocessing
 
 @app.route('/')
 def home():
-    return "House Price Prediction API is Up!"
+    return "House Price Prediction API is Up! (Dual Model Supported)"
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -374,19 +433,58 @@ def predict():
         except AssertionError as ae:
             return jsonify({"status": "error", "message": f"Validation Error: {str(ae)}"}), 400
 
-        # Predict
-        prediction = model.predict(df)
+        # Predict with Model 1 (Linear Regression)
+        pred1 = 0
+        if model1:
+            pred1 = model1.predict(df)[0]
+        
+        # Predict with Model 2 (Random Forest)
+        pred2 = 0
+        if model2:
+            pred2 = model2.predict(df)[0]
+        
+        # Decision Logic: Use Model 2 if Model 1 accuracy (R2) < 0.65
+        # Default to Model 1
+        active_prediction = pred1
+        active_model_name = "Model 1 (Linear Regression)"
+        
+        model1_r2 = model1_metadata.get("r2", 0)
+        
+        # If Model 1 accuracy is below 65% and Model 2 exists, switch
+        if model1_r2 < 0.65 and model2:
+            active_prediction = pred2
+            active_model_name = "Model 2 (Random Forest)"
+            print(f"Switching to Model 2 (R2 M1: {model1_r2:.2f} < 0.65)")
+        elif not model1 and model2:
+            # Fallback if model 1 missing
+            active_prediction = pred2
+            active_model_name = "Model 2 (Random Forest)"
         
         # Result
-        result = prediction[0]
+        result = float(active_prediction)
         
         # Log the successful prediction with clean data (not list format)
         log_input = {p: data_json[p] for p in predictors}
-        log_prediction(log_input, float(result), "success")
+        
+        details = {
+            "model1": {
+                "prediction": float(pred1) if model1 else None,
+                "r2": model1_r2
+            },
+            "model2": {
+                "prediction": float(pred2) if model2 else None,
+                "r2": model2_metadata.get("r2", 0)
+            },
+            "switched": active_model_name.startswith("Model 2")
+        }
+        
+        log_prediction(log_input, result, "success", model_used=active_model_name, details=details)
         
         return jsonify({
             "status": "success",
-            "prediction": float(result)
+            "prediction": result,
+            "model_used": active_model_name,
+            "details": details
         })
         
     except Exception as e:

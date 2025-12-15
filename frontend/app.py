@@ -177,19 +177,47 @@ def show_admin_page():
     metrics = get_metrics()
     
     if metrics:
-        col1, col2, col3 = st.columns(3)
-        with col1:
-             st.metric("Model Status", "Active", "Online")
-        with col2:
-             st.metric("R2 Score (Akurasi)", f"{metrics['r2']:.4f}")
-        with col3:
-             st.metric("MAPE (Error Rate)", f"{metrics['mape']:.2%}", delta_color="inverse")
-             
-        st.markdown("---")
-        st.markdown(f"### 🕒 Last Updated: {metrics['last_updated']}")
+        # Determine format (new vs old)
+        if "model1" in metrics:
+            m1 = metrics["model1"]
+            m2 = metrics.get("model2", {"name": "Backup Model", "r2": 0, "mape": 0})
+            last_updated = metrics.get("last_updated", "-")
+            
+            # Determine active based on logic (hardcoded logic replication for display)
+            active_name = m1["name"]
+            if m1["r2"] < 0.65:
+                active_name = m2["name"]
+                
+        else:
+            # Old format fallback
+            m1 = {"name": "Linear Regression", "r2": metrics.get("r2", 0), "mape": metrics.get("mape", 0)}
+            m2 = {"name": "Random Forest", "r2": 0, "mape": 0}
+            last_updated = metrics.get("last_updated", "-")
+            active_name = "Linear Regression"
+
+        st.info(f"⚡ **Active Model System**: {active_name}")
+
+        col1, col2 = st.columns(2)
         
-        st.markdown("### 📈 Detail Insights")
-        st.info("Saat ini model menggunakan algoritma **Linear Regression**. Error rate 28% menunjukkan perlunya penambahan fitur lokasi untuk meningkatkan akurasi.")
+        with col1:
+            st.markdown(f"### 🔹 Model 1: {m1.get('name', 'Linear Regression')}")
+            c1, c2 = st.columns(2)
+            c1.metric("R2 Score", f"{m1['r2']:.4f}")
+            c2.metric("MAPE", f"{m1['mape']:.2%}", delta_color="inverse")
+            if m1['r2'] < 0.65:
+                st.error("⚠️ Akurasi di bawah threshold (65%)")
+            else:
+                st.success("✅ Akurasi Optimal")
+                
+        with col2:
+            st.markdown(f"### 🔸 Model 2: {m2.get('name', 'Random Forest')}")
+            c3, c4 = st.columns(2)
+            c3.metric("R2 Score", f"{m2['r2']:.4f}")
+            c4.metric("MAPE", f"{m2['mape']:.2%}", delta_color="inverse")
+            st.caption("Cadangan (Backup)")
+
+        st.markdown("---")
+        st.markdown(f"### 🕒 Last Updated: {last_updated}")
         
         # -------------------------------------------------------------------------
         # MONITORING LOG SECTION
@@ -222,15 +250,19 @@ def show_admin_page():
                 log_display = []
                 for log in logs[:20]:  # Show last 20
                     input_data = log.get("input", {})
+                    # Get model used if available
+                    model_used = log.get("model_used", "Model 1")
+                    # Shorten names for table
+                    if "Linear" in model_used: model_used = "Linear Reg."
+                    if "Forest" in model_used: model_used = "Random Forest"
+                    
                     log_display.append({
                         "Waktu": log.get("timestamp", "-"),
-                        "Status": "✅ Sukses" if log.get("status") == "success" else "❌ Error",
+                        "Model": model_used,
                         "LB": input_data.get("LB", "-"),
                         "LT": input_data.get("LT", "-"),
-                        "KT": input_data.get("KT", "-"),
-                        "KM": input_data.get("KM", "-"),
-                        "GRS": input_data.get("GRS", "-"),
                         "Prediksi (Rp)": f"{log.get('prediction', 0):,.0f}" if log.get("prediction") else "-",
+                        "Status": "✅" if log.get("status") == "success" else "❌"
                     })
                 
                 import pandas as pd
