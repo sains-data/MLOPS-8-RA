@@ -23,6 +23,10 @@ jobs:
       run: |
         pip install -r scripts/requirements.txt
 
+    - name: Run Scraper (Get New Data)
+      run: |
+        python scripts/scraper.py
+
     - name: Run Training Script
       run: |
         python scripts/train.py
@@ -31,6 +35,6 @@ jobs:
       run: |
         git config --global user.name "GitHub Actions"
         git config --global user.email "actions@github.com"
-        git add api/models/production_model.pkl api/models/metrics.json
+        git add data/raw/"DATA RUMAH.xlsx" api/models/production_model.pkl api/models/metrics.json
         git commit -m "Auto-update model and metrics [skip ci]" || echo "No changes to commit"
         git push
