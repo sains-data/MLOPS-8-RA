@@ -30,7 +30,7 @@ Buka Terminal (Mac/Linux) atau Command Prompt/PowerShell (Windows) dan jalankan 
 
 ```bash
 # Clone repository ke folder bernama 'ML_Project_Rumah'
-git clone [https://github.com/barunaxyz/PrediksiHargaRumah.git](https://github.com/barunaxyz/PrediksiHargaRumah.git) ML_Project_Rumah
+git clone https://github.com/sains-data/MLOPS-8-RA.git ML_Project_Rumah
 ````
 
 ### 2\. Masuk ke Direktori Proyek
@@ -119,12 +119,18 @@ docker compose down
 ## 📂 Struktur Proyek
 
 ```
-ML_Project_Rumah/
-├── docker-compose.yml   # Konfigurasi orkestrasi container
-├── app.py               # Kode utama (entry point)
-├── requirements.txt     # Daftar pustaka Python
-├── model/               # Folder penyimpanan model ML (.pkl)
-└── Dockerfile           # Konfigurasi image Docker
+├── api/                 # Backend Flask API
+│   ├── app.py
+│   ├── Dockerfile
+│   └── requirements.txt
+├── frontend/            # Frontend Streamlit
+│   ├── app.py
+│   └── Dockerfile
+├── config/              # Konfigurasi parameter model
+├── data/                # Dataset (Raw & Processed)
+├── models/              # Model ML yang sudah dilatih
+├── scripts/             # Script training dan helper
+└── docker-compose.yml   # Konfigurasi orkestrasi container
 ```
 
 ```
