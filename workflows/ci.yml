@@ -1,0 +1,43 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build API Image
+      run: docker build -f api/Dockerfile -t house-price-api .
+
+    - name: Build Frontend Image
+      run: docker build -t house-price-frontend ./frontend
+
+    - name: Verify Docker Compose Configuration
+      run: docker compose config
+
+  deploy-api:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Deploy to Render
+      run: |
+        if [ -n "${{ secrets.RENDER_DEPLOY_HOOK }}" ]; then
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+          echo "✅ Render deploy triggered"
+        else
+          echo "⚠️ RENDER_DEPLOY_HOOK not set - skipping Render deploy"
+          echo "Render will auto-deploy from GitHub connection"
+        fi
