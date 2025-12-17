@@ -116,7 +116,7 @@ docker compose down
 
 -----
 
-## � CI/CD & Otomatisasi (GitHub Actions)
+## CI/CD & Otomatisasi (GitHub Actions)
 Proyek ini dilengkapi dengan pipeline CI/CD yang berjalan otomatis setiap minggu (**Weekly Retrain**).
 *   **Jadwal**: Setiap Minggu pukul 00:00 UTC (07:00 WIB).
 *   **Proses**:
@@ -143,7 +143,7 @@ Setiap prediksi yang masuk dicatat (log) untuk keperluan audit dan monitoring pe
 
 ---
 
-## �� Struktur Proyek
+## Struktur Proyek
 
 ```
 ├── .github/workflows/   # CI/CD Pipeline Configuration
