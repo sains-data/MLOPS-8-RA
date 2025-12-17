@@ -116,26 +116,50 @@ docker compose down
 
 -----
 
-## 📂 Struktur Proyek
+## � CI/CD & Otomatisasi (GitHub Actions)
+Proyek ini dilengkapi dengan pipeline CI/CD yang berjalan otomatis setiap minggu (**Weekly Retrain**).
+*   **Jadwal**: Setiap Minggu pukul 00:00 UTC (07:00 WIB).
+*   **Proses**:
+    1.  **Scraping**: Mengambil data properti terbaru dari internet.
+    2.  **Validasi**: Memastikan kualitas data sebelum masuk ke training.
+    3.  **Training**: Melatih ulang model dengan data gabungan (lama + baru).
+    4.  **Auto-Push**: Menyimpan model terbaru (`.pkl`) dan metrics kembali ke GitHub.
+
+## ✨ Fitur Unggulan
+
+### 1. Dual Model Switching Logic
+Sistem menggunakan dua model sekaligus:
+*   **Model 1 (Linear Regression)**: Model standar.
+*   **Model 2 (Random Forest)**: Model cadangan (Backup).
+*   **Mekanisme**: Saat prediksi, sistem akan otomatis memilih model dengan akurasi (R2 Score) tertinggi berdasarkan training terakhir.
+
+### 2. Data Drift Detection
+Dilengkapi dengan **Evidently AI** untuk mendeteksi perubahan pola data (Data Drift).
+*   Membandingkan data yang diinput user saat ini dengan data training.
+*   Memberikan peringatan jika data lapangan mulai melenceng jauh dari data training.
+
+### 3. Monitoring Log
+Setiap prediksi yang masuk dicatat (log) untuk keperluan audit dan monitoring performa, dapat diakses via API endpoint `/logs` atau menu Admin di Frontend.
+
+---
+
+## �� Struktur Proyek
 
 ```
+├── .github/workflows/   # CI/CD Pipeline Configuration
 ├── api/                 # Backend Flask API
-│   ├── app.py
-│   ├── Dockerfile
-│   └── requirements.txt
+│   ├── app.py           # Main API Logic
+│   ├── data_preparation.py # Data Validation Script
+│   └── models/          # Trained Models (.pkl) & Metrics
 ├── frontend/            # Frontend Streamlit
-│   ├── app.py
-│   └── Dockerfile
-├── config/              # Konfigurasi parameter model
+├── config/              # Konfigurasi parameter (params.yaml)
 ├── data/                # Dataset (Raw & Processed)
-├── models/              # Model ML yang sudah dilatih
-├── scripts/             # Script training dan helper
+├── scripts/             # Utility Scripts
+│   ├── scraper.py       # Web Scraper Rumah123
+│   └── train.py         # Training Pipeline
 └── docker-compose.yml   # Konfigurasi orkestrasi container
+```
 
 ## 👥 Maintainer
-**Bastiansilabantio**
-```
-
-```
-```
+**Tim MLOps - Kelompok 8 Information System 2022**
 
