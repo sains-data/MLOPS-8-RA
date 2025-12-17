@@ -1,13 +1,13 @@
 {
     "model1": {
         "name": "Linear Regression",
-        "mape": 0.2890,
-        "r2": 0.7152
+        "mape": 0.2622400860057363,
+        "r2": 0.6955736448573818
     },
     "model2": {
         "name": "Random Forest Regressor",
-        "mape": 0.2145,
-        "r2": 0.8123
+        "mape": 0.22672213636791055,
+        "r2": 0.7097145429599868
     },
-    "last_updated": "16 December 2025 01:50"
+    "last_updated": "17 December 2025 20:21"
 }
