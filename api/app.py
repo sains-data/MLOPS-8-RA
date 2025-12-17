@@ -443,20 +443,26 @@ def predict():
         if model2:
             pred2 = model2.predict(df)[0]
         
-        # Decision Logic: Use Model 2 if Model 1 accuracy (R2) < 0.65
-        # Default to Model 1
+        # Decision Logic: Use the model with higher accuracy
         active_prediction = pred1
         active_model_name = "Model 1 (Linear Regression)"
         
         model1_r2 = model1_metadata.get("r2", 0)
+        model2_r2 = model2_metadata.get("r2", 0)
         
-        # If Model 1 accuracy is below 65% and Model 2 exists, switch
-        if model1_r2 < 0.65 and model2:
-            active_prediction = pred2
-            active_model_name = "Model 2 (Random Forest)"
-            print(f"Switching to Model 2 (R2 M1: {model1_r2:.2f} < 0.65)")
-        elif not model1 and model2:
-            # Fallback if model 1 missing
+        use_model2 = False
+        
+        if model2 and model1:
+             if model2_r2 > model1_r2:
+                 use_model2 = True
+                 print(f"Choosing Model 2 (R2: {model2_r2:.4f}) over Model 1 (R2: {model1_r2:.4f})")
+             else:
+                 print(f"Choosing Model 1 (R2: {model1_r2:.4f}) over Model 2 (R2: {model2_r2:.4f})")
+        elif model2 and not model1:
+             use_model2 = True
+             print("Model 1 missing, using Model 2")
+             
+        if use_model2:
             active_prediction = pred2
             active_model_name = "Model 2 (Random Forest)"
         

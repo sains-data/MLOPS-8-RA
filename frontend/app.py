@@ -185,7 +185,7 @@ def show_admin_page():
             
             # Determine active based on logic (hardcoded logic replication for display)
             active_name = m1["name"]
-            if m1["r2"] < 0.65:
+            if m2["r2"] > m1["r2"]:
                 active_name = m2["name"]
                 
         else:
@@ -204,17 +204,20 @@ def show_admin_page():
             c1, c2 = st.columns(2)
             c1.metric("R2 Score", f"{m1['r2']:.4f}")
             c2.metric("MAPE", f"{m1['mape']:.2%}", delta_color="inverse")
-            if m1['r2'] < 0.65:
-                st.error("⚠️ Akurasi di bawah threshold (65%)")
+            if m2['r2'] > m1['r2']:
+                st.caption("⚠️ Disabling (Lower Accuracy)")
             else:
-                st.success("✅ Akurasi Optimal")
+                st.success("✅ Active Model")
                 
         with col2:
             st.markdown(f"### 🔸 Model 2: {m2.get('name', 'Random Forest')}")
             c3, c4 = st.columns(2)
             c3.metric("R2 Score", f"{m2['r2']:.4f}")
             c4.metric("MAPE", f"{m2['mape']:.2%}", delta_color="inverse")
-            st.caption("Cadangan (Backup)")
+            if m2['r2'] > m1['r2']:
+                st.success("✅ Active Model")
+            else:
+                 st.caption("Cadangan (Backup)")
 
         st.markdown("---")
         st.markdown(f"### 🕒 Last Updated: {last_updated}")

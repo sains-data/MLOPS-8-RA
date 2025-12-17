@@ -131,6 +131,9 @@ docker compose down
 ├── models/              # Model ML yang sudah dilatih
 ├── scripts/             # Script training dan helper
 └── docker-compose.yml   # Konfigurasi orkestrasi container
+
+## 👥 Maintainer
+**Bastiansilabantio**
 ```
 
 ```
