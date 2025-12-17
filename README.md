@@ -161,5 +161,5 @@ Setiap prediksi yang masuk dicatat (log) untuk keperluan audit dan monitoring pe
 ```
 
 ## 👥 Maintainer
-**Tim MLOps - Kelompok 8 Information System 2022**
+**Tim MLOps - Kelompok 8
 
